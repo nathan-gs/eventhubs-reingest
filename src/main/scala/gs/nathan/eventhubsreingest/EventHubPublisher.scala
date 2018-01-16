@@ -5,10 +5,11 @@ import com.microsoft.azure.eventhubs.{ConnectionStringBuilder, EventData, EventH
 import scala.collection.JavaConverters._
 import scala.util.Try
 
-class EventHubPublisher(ns: String, hub: String, keyName: String, keyValue: String) extends EventPublisher {
+class EventHubPublisher(ns: String, hub: String, keyName: String, keyValue: String) extends EventPublisher with Logger {
 
   val connectionString = new ConnectionStringBuilder(ns, hub, keyName, keyValue).toString
   val NumberOfMessagesToSendInBatch = 32
+  val MaxBatchSize = 200000
 
   override def numberOfPartitions = Try{
     val ehClient = EventHubClient.createFromConnectionStringSync(connectionString)
@@ -25,8 +26,16 @@ class EventHubPublisher(ns: String, hub: String, keyName: String, keyValue: Stri
     })
 
     byteToEvents
-      //.grouped(NumberOfMessagesToSendInBatch)
-      .foreach(s => partitionSender.sendSync(s))
+      .grouped(NumberOfMessagesToSendInBatch)
+      .foreach(s => {
+        val size = s.map(e => e.getBytes.length).sum
+        if(size < MaxBatchSize) {
+          partitionSender.sendSync(s.asJava)
+        } else {
+          log.warn(s"Sending ${s.length} messages individually, because $size is bigger than $MaxBatchSize")
+          s.foreach(e => partitionSender.sendSync(e))
+        }
+      })
 
   }
 }
