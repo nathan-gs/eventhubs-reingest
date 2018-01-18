@@ -1,60 +1,49 @@
 package gs.nathan.eventhubsreingest
 
+import gs.nathan.eventhubsreingest.eh.{EventHubPublisher, EventHubPublisherConfig}
+import gs.nathan.eventhubsreingest.input.{EventDataSet, InputConfig}
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{udf, col}
 
 object Main extends Logger {
+
+  val ConfigPrefix = "spark.eventhubsreingest"
 
   def main(args: Array[String]): Unit = {
 
     val spark = SparkSession
       .builder()
-      .appName("Avro to Event Hubs")
+      .appName("Avro to EventHubs")
       .getOrCreate()
 
-    val appConf = config(spark)
+    val sparkConf = spark.sparkContext.getConf
 
-    import com.databricks.spark.avro._
-    val df = spark.read.avro(appConfig(appConf, "input.path"))
+    log.info(s"$ConfigPrefix START")
+    log.info(sparkConf.toDebugString)
+    log.info(s"$ConfigPrefix END")
 
-    val mappedToTs = df.withColumn("ts", to_timestamp(col("EnqueuedTimeUtc")))
+    val ds = EventDataSet(spark, InputConfig(sparkConf, s"$ConfigPrefix.inputs"), sparkConf.getOption(s"$ConfigPrefix.query"))
+    sparkConf.getOption(s"$ConfigPrefix.cache") match {
+      case Some("false") =>
+      case _ => ds.cache()
+    }
 
+    val publisherConfig = EventHubPublisherConfig(sparkConf, s"$ConfigPrefix.output.eh")
+    val publisher = new EventHubPublisher(publisherConfig)
 
-    val publisher = new EventHubPublisher(
-      appConfig(appConf, "output.eh.ns"),
-      appConfig(appConf, "output.eh.name"),
-      appConfig(appConf, "output.eh.keyName"),
-      appConfig(appConf, "output.eh.keyValue"))
+    val toEventHub = new EventDataSetToEventHub(publisher, spark)
 
-    val toEventHub = new DataFrameToEventHub(publisher)
+    val status = toEventHub.apply(ds)
 
-    val orderByColumns = appConfig(appConf, "input.orderBy").split(",").toSeq
+    spark.stop()
 
-    val status = toEventHub.apply(mappedToTs, ColSpec(ts = "ts"), orderByColumns)
-    status
-      .filter(_.isFailure)
-      .foreach(t => log.error("Failed to publish events. ", t.failed.get))
+    if(status.exists(_.isFailure)) {
+      status
+        .filter(_.isFailure)
+        .foreach(t => log.error("Failed to publish events.", t.failed.get))
+      System.exit(1)
+    }
   }
 
-  def config(spark: SparkSession):Map[String, String] = {
-    spark
-      .sparkContext
-      .getConf
-      .getAllWithPrefix("spark.eventhubsreingest")
-      .toMap
-      .map(v => (v._1.stripPrefix("."), v._2))
-  }
 
-  def appConfig(conf: Map[String, String], key: String): String = {
-    conf.getOrElse(key, throw new RuntimeException(s"$key not set!"))
-  }
-
-  def to_timestamp=udf((v: String) => {
-    import java.sql.Timestamp
-    import java.text.SimpleDateFormat //  1/12/2018 8:05:52 AM
-    val dateFormat = new SimpleDateFormat("M/d/yyyy hh:mm:ss a")
-    val parsedDate = dateFormat.parse(v)
-    val timestamp = new Timestamp(parsedDate.getTime)
-    timestamp
-  })
 }
+

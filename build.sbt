@@ -1,14 +1,18 @@
 name := "eventhubs-reingest"
+
 organization := "gs.nathan"
-version := "1.0.0"
+
+version := "0.1.0-SNAPSHOT"
+
 scalaVersion := "2.11.8"
+
 libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % "2.1.0" % "provided",
   "org.apache.spark" %% "spark-sql" % "2.1.0" % "provided",
   "org.apache.spark" %% "spark-streaming" % "2.1.0" % "provided",
   "com.microsoft.azure" % "azure-eventhubs" % "0.15.1",
   "com.databricks" %% "spark-avro" % "4.0.0",
-  "org.jmockit" % "jmockit" % "1.34" % "test"
+  "org.scalatest" %% "scalatest" % "3.0.4" % "test"
 )
 
 mainClass in assembly := Some("gs.nathan.eventhubsreingest.Main")

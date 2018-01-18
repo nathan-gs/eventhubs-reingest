@@ -1,27 +1,34 @@
-package gs.nathan.eventhubsreingest
+package gs.nathan.eventhubsreingest.eh
 
-import com.microsoft.azure.eventhubs.{ConnectionStringBuilder, EventData, EventHubClient}
+import com.microsoft.azure.eventhubs.{EventData, EventHubClient}
+import gs.nathan.eventhubsreingest.{Event, EventPublisher, Logger}
 
 import scala.collection.JavaConverters._
 import scala.util.Try
 
-class EventHubPublisher(ns: String, hub: String, keyName: String, keyValue: String) extends EventPublisher with Logger {
+class EventHubPublisher(config: EventHubPublisherConfig) extends EventPublisher with Logger {
 
-  val connectionString = new ConnectionStringBuilder(ns, hub, keyName, keyValue).toString
-  val NumberOfMessagesToSendInBatch = 32
-  val MaxBatchSize = 200000
+  private val connectionString = config.connectionString
+  val NumberOfMessagesToSendInBatch = 24
+  val MaxBatchSize = 245760 - (1024 * 2)
+
+  def client() = {
+    val ehClient = EventHubClient.createFromConnectionStringSync(connectionString)
+    ehClient.createBatch()
+  }
 
   override def numberOfPartitions = Try{
     val ehClient = EventHubClient.createFromConnectionStringSync(connectionString)
     ehClient.getRuntimeInformation.get().getPartitionIds.length
   }
 
-  override def send(partition: Int, events: Seq[EventType], eventProperties: Map[String, String] = Map()) = Try{
+  override def send(partition: Int, events: Seq[Event], eventProperties: Map[String, String] = Map()) = Try{
     val ehClient = EventHubClient.createFromConnectionStringSync(connectionString)
     val partitionSender = ehClient.createPartitionSenderSync(partition.toString)
     val byteToEvents = events.map(e => {
-      val ev = new EventData(e)
-      ev.getProperties.putAll(eventProperties.asJava)
+      val ev = new EventData(e.body)
+      val properties = eventProperties + ("original_ts" -> e.ts.getTime.toString)
+      ev.getProperties.putAll(properties.asJava)
       ev
     })
 
