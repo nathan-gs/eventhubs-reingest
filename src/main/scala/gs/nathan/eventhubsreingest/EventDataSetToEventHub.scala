@@ -35,16 +35,14 @@ class EventDataSetToEventHub(publisher: EventPublisher, spark: SparkSession) ext
       def compare(x: Timestamp, y: Timestamp): Int = x compareTo y
     }
 
-    val items = iter
+    iter
       .toSeq
-
-    items
       .groupBy(_.randomPartition)
       .map { case (p, seq) => {
-        log.info(s"Publishing on partition $p, from ${seq.map(_.ts).min} to ${seq.map(_.ts).max}")
+        val sorted = seq.sortBy(_.ts)
+        log.info(s"Publishing on partition $p, from ${sorted.head.ts} to ${sorted.last.ts}, number of msgs: ${sorted.size}")
 
-        publisher.send(p, seq
-          .sortBy(_.ts)
+        publisher.send(p, sorted
           .map(t => Event(t.ts, t.body)))
         }}
       .toIterator

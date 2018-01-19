@@ -3,9 +3,7 @@ package gs.nathan.eventhubsreingest.eh
 import com.microsoft.azure.eventhubs.ConnectionStringBuilder
 import org.apache.spark.SparkConf
 
-case class EventHubPublisherConfig(ns: String, hub: String, keyName: String, keyValue: String) {
-  val connectionString:String = new ConnectionStringBuilder(ns, hub, keyName, keyValue).toString
-}
+case class EventHubPublisherConfig(ns: String, hub: String, keyName: String, keyValue: String)
 
 object EventHubPublisherConfig {
   def apply(sparkConf: SparkConf, prefix: String):EventHubPublisherConfig = {
