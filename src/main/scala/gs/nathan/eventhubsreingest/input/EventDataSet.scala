@@ -6,7 +6,7 @@ import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 
 object EventDataSet extends Logger {
 
-  def apply(spark: SparkSession, config: Seq[InputSpec], query: Option[String]):Dataset[Event] = {
+  def apply(spark: SparkSession, config: Seq[InputConfig], query: Option[String]):Dataset[Event] = {
     import spark.implicits._
     val ds = query match {
       case Some(q) => fromQuery(spark, config, q)
@@ -15,8 +15,8 @@ object EventDataSet extends Logger {
     ds.as[Event]
   }
 
-  private def fromQuery(spark: SparkSession, config: Seq[InputSpec], query: String):DataFrame = {
-    spark.udf.register("capture_timestamp", to_timestamp)
+  private def fromQuery(spark: SparkSession, config: Seq[InputConfig], query: String):DataFrame = {
+    spark.udf.register("ehcapture_timestamp", to_timestamp)
 
     config.foreach(i => {
       log.info(s"Reading ${i.alias}, from ${i.path} as ${i.format} with options: ${i.options}")
@@ -32,13 +32,13 @@ object EventDataSet extends Logger {
       .sql(query)
   }
 
-  private def fromCapture(spark: SparkSession, config: Seq[InputSpec]):DataFrame = {
+  private def fromCapture(spark: SparkSession, config: Seq[InputConfig]):DataFrame = {
     log.info("No query given. Assuming EventHubs capture data.")
 
     val ds = spark
       .read
-      .format("com.databricks.spark.avro")
-      .load(config.filter(_.format == "avro").map(_.path): _*)
+      .format(InputConfig.AvroFormat)
+      .load(config.filter(_.sparkFormat == InputConfig.AvroFormat).map(_.path): _*)
     val t = udf(to_timestamp)
     ds
       .select(t(col("EnqueuedTimeUtc")) as "ts", ds("Body") as "body")

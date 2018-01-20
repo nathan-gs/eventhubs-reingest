@@ -1,7 +1,7 @@
 package gs.nathan.eventhubsreingest
 
 import gs.nathan.eventhubsreingest.eh.{EventHubPublisher, EventHubPublisherConfig}
-import gs.nathan.eventhubsreingest.input.{EventDataSet, InputConfig}
+import gs.nathan.eventhubsreingest.input.{EventDataSet, InputConfigBuilder}
 import org.apache.spark.sql.SparkSession
 
 object Main extends Logger {
@@ -21,7 +21,7 @@ object Main extends Logger {
     log.info(sparkConf.toDebugString)
     log.info(s"$ConfigPrefix END")
 
-    val ds = EventDataSet(spark, InputConfig(sparkConf, s"$ConfigPrefix.inputs"), sparkConf.getOption(s"$ConfigPrefix.query"))
+    val ds = EventDataSet(spark, InputConfigBuilder(sparkConf, s"$ConfigPrefix.inputs"), sparkConf.getOption(s"$ConfigPrefix.query"))
     sparkConf.getOption(s"$ConfigPrefix.cache") match {
       case Some("false") =>
       case _ => ds.cache()
