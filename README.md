@@ -25,7 +25,7 @@ by specifying `spark.eventhubsreingest.inputs.`, each `alias` is queryable.
 For example we want to read EventHubs capture data, but only data for a specific day, we could use following `query`:
 
 ```sql
-SELECT capture_timestamp(EnqueuedTimeUtc) as ts, Body as body FROM capture WHERE year='2018' AND month='01' AND day='16'
+SELECT ehcapture_timestamp(EnqueuedTimeUtc) as ts, Body as body FROM capture WHERE year='2018' AND month='01' AND day='16'
 ```
 
 Do note the `ehcapture_timestamp` function, which translates EventHubs capture Date Time strings into the right format. 
@@ -76,7 +76,7 @@ each batch. Multiple partitions can be send in parallel though.
 
 The `livy.sh` script will upload and submit the jar file. The `livy.sh` script assumes you have build the source code from scratch (`sbt assembly`).
 
-```
+```bash
 
 export STORAGE_ACCOUNT_NAME="YOUR STORAGE ACC"
 export STORAGE_CONTAINER_NAME="YOUR STORAGE CONTAINER"
