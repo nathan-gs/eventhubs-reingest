@@ -55,7 +55,7 @@ class EventHubPublisher(config: EventHubPublisherConfig) extends EventPublisher 
     toEvents.foreach(e => {
       if(!batch.tryAdd(e)) {
         ehClient.sendSync(batch)
-        log.info(s"Batch sent of ${batch.getSize} msgs, sleeping for ${WaitAfterBatch}ms.")
+        log.info(s"Batch for partition ${partition} sent of ${batch.getSize} msgs, sleeping for ${WaitAfterBatch}ms.")
         Thread.sleep(WaitAfterBatch)
 
         batch = ehClient.createBatch(batchOptions)

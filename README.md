@@ -101,3 +101,30 @@ export APP_CONF="$APP_CONF"
 Checking the status can be done through the Yarn UI, or using
 `curl -k --user "$CLUSTER_USER:$CLUSTER_PASSWORD" "$CLUSTER_URL/livy/batches"`
 
+## Performance
+
+On a:
+* 3 worker node HDI cluster
+* a target EventHub
+  * 12 partitions
+  * 12 throughput units
+* 5.6gb of capture files, with some small and some large events:
+  * 1,592 blobs
+  * 5,616,207,929 bytes
+  
+We manage to process the data in `15 minutes`. 
+
+#### Throughput in mb
+![Number of incoming megabytes](docs/assets/nr_of_mb.png)
+![Number of incoming megabytes per min](docs/assets/nr_of_mb_min.png)
+
+
+#### Throughput in msg/s
+![Number of Incoming Messages](docs/assets/nr_msgs.png)
+![Number of Incoming Messages per min](docs/assets/nr_msgs_min.png)
+
+#### Distribution of Spark taks
+![Spark Task distribution](docs/assets/spark_summary.png)
+
+Do notice that the task time is highly correlated with the input size.
+![Spark Task distribution](docs/assets/spark_min_related_to_size.png)
