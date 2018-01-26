@@ -12,9 +12,8 @@ class EventHubPublisher(config: EventHubPublisherConfig) extends EventPublisher 
 
   /*
     A batch is normally 256kb. We can send max 1mb/s per partition and throughput unit.
-    Let's sleep for 300ms after each batch.
   */
-  val WaitAfterBatch = 300l * 1l
+  val WaitAfterBatch = config.msToWaitAfterBatch
 
   def client() = {
     val connection = new ConnectionStringBuilder(config.ns, config.hub, config.keyName, config.keyValue)
@@ -54,15 +53,33 @@ class EventHubPublisher(config: EventHubPublisherConfig) extends EventPublisher 
 
     toEvents.foreach(e => {
       if(!batch.tryAdd(e)) {
-        ehClient.sendSync(batch)
-        log.info(s"Batch for partition ${partition} sent of ${batch.getSize} msgs, sleeping for ${WaitAfterBatch}ms.")
+        tryBatchSend(ehClient, batch)
+        log.info(s"Batch for partition ${partition} sent, containing ${batch.getSize} msgs, sleeping for ${WaitAfterBatch}ms.")
         Thread.sleep(WaitAfterBatch)
 
         batch = ehClient.createBatch(batchOptions)
         batch.tryAdd(e)
       }
     })
-    ehClient.sendSync(batch)
+    tryBatchSend(ehClient, batch)
     ehClient.closeSync()
+  }
+
+  /*
+    Catch ServerBusyExceptions
+   */
+  private def tryBatchSend(ehClient: EventHubClient, batch: EventDataBatch): Unit = {
+    if(batch.getSize == 0) {
+      return ;
+    }
+    try {
+      ehClient.sendSync(batch)
+    } catch {
+      case _: ServerBusyException => {
+        log.warn(s"Server is busy, sleeping for 5000ms.")
+        Thread.sleep(5* 1000l)
+        ehClient.sendSync(batch)
+      }
+    }
   }
 }

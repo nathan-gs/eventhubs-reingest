@@ -18,7 +18,7 @@ as the `capture file name format` (it's seen as a partitioned table).
 Everything else is done automatically.
 
 ### Query based inputs 
-By specifying `spark.eventhubsreingest.query` you can customize the query used that reads the data.
+By specifying `spark.eventhubsreingest.query` you can customize the query used to read the data.
 You can read from Hive & Spark SQL tables, if you have a centralized metastore. Additionaly, you can add `temporary views` 
 by specifying `spark.eventhubsreingest.inputs.`, each `alias` is queryable. 
 
@@ -58,6 +58,8 @@ spark.eventhubsreingest.output.eh.name=""
 spark.eventhubsreingest.output.eh.keyName=""
 spark.eventhubsreingest.output.eh.keyValue=""
 
+# set by default to 260 ms (because 1 throughput unit is 1mb/s and batch size is 256kb, with some margins).
+spark.eventhubsreingest.output.eh.ms_to_wait_after_batch="260"
 ```
 
 The application connects to EventHub to discover the partition layout, and divides the dataset in the exact 

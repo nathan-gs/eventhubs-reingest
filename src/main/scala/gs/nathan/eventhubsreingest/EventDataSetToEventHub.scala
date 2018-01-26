@@ -6,7 +6,7 @@ import java.sql.Timestamp
 import org.apache.spark.sql.{Dataset, SparkSession}
 import org.apache.spark.sql.functions.{col, dayofyear, hour, rand, year}
 
-import scala.util.Try
+import scala.util.{Success, Try}
 
 
 class EventDataSetToEventHub(publisher: EventPublisher, spark: SparkSession) extends Serializable with Logger {
@@ -40,12 +40,21 @@ class EventDataSetToEventHub(publisher: EventPublisher, spark: SparkSession) ext
       .groupBy(_.randomPartition)
       .map { case (p, seq) => {
         val sorted = seq.sortBy(_.ts)
-        log.info(s"Publishing on partition $p, from ${sorted.head.ts} to ${sorted.last.ts}, number of msgs: ${sorted.size}")
+        sorted.headOption match {
+          case Some(head) => {
+            log.info(s"Publishing on partition $p, from ${head.ts} to ${sorted.last.ts}, number of msgs: ${sorted.size}")
 
-        publisher.send(p, sorted
-          .map(t => Event(t.ts, t.body)))
-        }}
-      .toIterator
+            publisher.send(p, sorted
+              .map(t => Event(t.ts, t.body)))
+          }
+          case None => {
+            log.warn(s"Empty iterator for partition $p")
+            Success[Unit]()
+          }
+        }
+      }
+    }
+    .toIterator
   }
 }
 

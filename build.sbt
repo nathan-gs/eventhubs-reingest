@@ -2,7 +2,7 @@ name := "eventhubs-reingest"
 
 organization := "gs.nathan"
 
-version := "0.1.2-SNAPSHOT"
+version := "0.2.0-SNAPSHOT"
 
 scalaVersion := "2.11.8"
 
