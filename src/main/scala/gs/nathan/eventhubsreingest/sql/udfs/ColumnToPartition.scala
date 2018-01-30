@@ -6,8 +6,8 @@ class ColumnToPartition(partitionSize: Int) extends Udf {
     spark.udf.register(name, this.function)
   }
 
-  val function = (value: Any) => {
-    value.toString.hashCode % partitionSize
+  val function = (value: String) => {
+    Math.abs(value.hashCode % partitionSize)
   }
 
   override val name: String = "column_to_partition"

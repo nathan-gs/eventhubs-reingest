@@ -5,6 +5,9 @@
 We require a `Dataset` with, following columns:
 * a `ts` as `java.sql.Timestamp` column
 * a `body` as `Array[Byte]`
+* a `eh_partion` as `int`
+    * Either randomly using `random_partition()`
+    * Or based on a field `column_to_partition()`
 
 ### EventHubs Capture data
 If you want to ingest everything inside a `EventHubs Capture` target, you can leave the `spark.eventhubsreingest.query` 

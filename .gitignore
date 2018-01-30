@@ -8,3 +8,4 @@
 /target/
 
 /livy-private.sh
+/livy-stop.sh

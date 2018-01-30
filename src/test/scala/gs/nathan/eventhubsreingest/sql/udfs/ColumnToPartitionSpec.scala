@@ -14,6 +14,12 @@ class ColumnToPartitionSpec extends WordSpec {
         val rUdf = new ColumnToPartition(12)
         rUdf.function("test") should be <=12
       }
+
+      "never produce a number lower than 0" in {
+
+        val rUdf = new ColumnToPartition(12)
+        rUdf.function("random") should be >=0
+      }
     }
     "asked the name" should {
       "produce column_to_partition" in {
