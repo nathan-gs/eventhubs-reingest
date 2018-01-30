@@ -15,6 +15,17 @@ unnecessary if you use
 `{Namespace}/{EventHub}/year={Year}/month={Month}/day={Day}/hour={Hour}/minute={Minute}/capture-{Second}-{PartitionId}` 
 as the `capture file name format` (it's seen as a partitioned table).
 
+The query being used for this is: 
+```sql
+SELECT
+  ehcapture_timestamp(`EnqueuedTimeUtc`) as `ts`,
+  `Body` as `body`,
+  random_partition() as `eh_partition`
+FROM internal_capture_alias
+ORDER BY
+  year(`ts`), dayofyear(`ts`), hour(`ts`), `eh_partition`
+```
+
 Everything else is done automatically.
 
 ### Query based inputs 
@@ -25,7 +36,12 @@ by specifying `spark.eventhubsreingest.inputs.`, each `alias` is queryable.
 For example we want to read EventHubs capture data, but only data for a specific day, we could use following `query`:
 
 ```sql
-SELECT ehcapture_timestamp(EnqueuedTimeUtc) as ts, Body as body FROM capture WHERE year='2018' AND month='01' AND day='16'
+SELECT 
+    ehcapture_timestamp(EnqueuedTimeUtc) as `ts`, 
+    Body as body,
+    random_partition() as `eh_partition` 
+    FROM capture WHERE year='2018' AND month='01' AND day='16'
+    ORDER BY year(`ts`), dayofyear(`ts`), hour(`ts`), `eh_partition`
 ```
 
 Do note the `ehcapture_timestamp` function, which translates EventHubs capture Date Time strings into the right format. 
@@ -37,10 +53,37 @@ Specifying the query and the rest of the inputs config now looks like this:
 spark.eventhubsreingest.inputs.capture.path="wasbs://..."
 spark.eventhubsreingest.inputs.capture.format=com.databricks.spark.avro
 
-spark.eventhubsreingest.query="SELECT ehcapture_timestamp(EnqueuedTimeUtc) as ts, Body as body FROM capture WHERE year='2018' AND month='01' AND day='16'"
+spark.eventhubsreingest.query="SELECT ehcapture_timestamp(EnqueuedTimeUtc) as ts, Body as body, random_partition() as `eh_partition` FROM capture WHERE year='2018' AND month='01' AND day='16' ORDER BY `year`, `month`, `hour`, `eh_partition`"
 ```
 
 You have access to the full Spark SQL functionality, including joins, etc.
+
+#### Partitioning based on a field within the message.
+
+It's possible to use your own partitioning strategy, by looking at the contents of the message.
+
+Suppose we have json messages, that look like this:
+
+```json
+{"id":"arandomid1", "k":"d"}
+{"id":"arandomid2", "k":"d"}
+{"id":"arandomid1", "k":"d"}
+```
+
+We could use following query:
+
+```sql
+SELECT
+  `ts`,
+  `data` as `body`,
+  column_to_partition(get_json_object(`data`, '$.id')) as `eh_partition`
+FROM `testds_hash`
+ORDER BY
+  year(`ts`), dayofyear(`ts`), hour(`ts`), `eh_partition`
+```
+
+The `column_to_partition` udf will partition the messages based on the `String.hashCode % NUMBER_OF_PARTITIONS`. 
+
 
 ### Caching
 

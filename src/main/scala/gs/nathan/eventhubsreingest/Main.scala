@@ -1,7 +1,8 @@
 package gs.nathan.eventhubsreingest
 
 import gs.nathan.eventhubsreingest.eh.{EventHubPublisher, EventHubPublisherConfig}
-import gs.nathan.eventhubsreingest.input.{EventDataSet, InputConfigBuilder}
+import gs.nathan.eventhubsreingest.input.{ProduceEventDataSetFromCapture, ProduceEventDataSetFromQuery, InputConfigBuilder}
+import gs.nathan.eventhubsreingest.sql.udfs.{RandomPartition, ToTimestamp, UdfRegister}
 import org.apache.spark.sql.SparkSession
 
 object Main extends Logger {
@@ -21,16 +22,23 @@ object Main extends Logger {
     log.info(sparkConf.toDebugString)
     log.info(s"$ConfigPrefix END")
 
-    val ds = EventDataSet(spark, InputConfigBuilder(sparkConf, s"$ConfigPrefix.inputs"), sparkConf.getOption(s"$ConfigPrefix.query"))
+    val publisherConfig = EventHubPublisherConfig(sparkConf, s"$ConfigPrefix.output.eh")
+    val publisher = new EventHubPublisher(publisherConfig)
+
+    UdfRegister(spark, publisher.numberOfPartitions.get)
+
+    val produceEventDataSet = sparkConf.getOption(s"$ConfigPrefix.query") match {
+      case Some(q) => new ProduceEventDataSetFromQuery(spark, InputConfigBuilder(sparkConf, s"$ConfigPrefix.inputs"), q)
+      case _ => new ProduceEventDataSetFromCapture(spark, InputConfigBuilder(sparkConf, s"$ConfigPrefix.inputs"))
+    }
+
+    val ds = produceEventDataSet.apply().get
     sparkConf.getOption(s"$ConfigPrefix.cache") match {
       case Some("false") =>
       case _ => ds.cache()
     }
 
-    val publisherConfig = EventHubPublisherConfig(sparkConf, s"$ConfigPrefix.output.eh")
-    val publisher = new EventHubPublisher(publisherConfig)
-
-    val toEventHub = new EventDataSetToEventHub(publisher, spark)
+    val toEventHub = new EventDataSetToEventPublisher(publisher)
 
     val status = toEventHub.apply(ds)
 
