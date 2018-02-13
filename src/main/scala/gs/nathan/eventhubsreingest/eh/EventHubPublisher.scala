@@ -3,7 +3,7 @@ package gs.nathan.eventhubsreingest.eh
 import java.time.Duration
 
 import com.microsoft.azure.eventhubs._
-import gs.nathan.eventhubsreingest.{Event, EventPublisher, Logger}
+import gs.nathan.eventhubsreingest.{Event, EventPublisher, Logger, PublishResultStats}
 
 import scala.collection.JavaConverters._
 import scala.util.Try
@@ -38,11 +38,18 @@ class EventHubPublisher(config: EventHubPublisherConfig) extends EventPublisher 
   }
 
   override def send(partition: Int, events: Seq[Event], eventProperties: Map[String, String] = Map()) = Try{
+    val start = System.nanoTime()
     val ehClient = client()
 
     val batchOptions = new BatchOptions()
     batchOptions.partitionKey = partition.toString
     var batch = ehClient.createBatch(batchOptions)
+
+    val startTs = events.head.ts
+    val endTs = events.last.ts
+    val numberOfEvents = events.length
+    val sizeInBytes = events.map(_.body.length).sum
+    var numberOfBatches = 0
 
     val toEvents = events.map(e => {
       val ev = new EventData(e.body)
@@ -54,6 +61,7 @@ class EventHubPublisher(config: EventHubPublisherConfig) extends EventPublisher 
     toEvents.foreach(e => {
       if(!batch.tryAdd(e)) {
         tryBatchSend(ehClient, batch)
+        numberOfBatches += 1
         log.info(s"Batch for partition ${partition} sent, containing ${batch.getSize} msgs, sleeping for ${WaitAfterBatch}ms.")
         Thread.sleep(WaitAfterBatch)
 
@@ -62,7 +70,10 @@ class EventHubPublisher(config: EventHubPublisherConfig) extends EventPublisher 
       }
     })
     tryBatchSend(ehClient, batch)
+    numberOfBatches += 1
     ehClient.closeSync()
+    val processingTime = System.nanoTime() - start
+    PublishResultStats(numberOfEvents, sizeInBytes, numberOfBatches, processingTime, startTs, endTs)
   }
 
   /*
@@ -83,3 +94,4 @@ class EventHubPublisher(config: EventHubPublisherConfig) extends EventPublisher 
     }
   }
 }
+

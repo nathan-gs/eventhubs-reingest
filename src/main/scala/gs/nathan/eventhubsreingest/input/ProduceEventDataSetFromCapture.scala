@@ -25,8 +25,6 @@ class ProduceEventDataSetFromCapture(
                    |  `Body` as `body`,
                    |  random_partition() as `eh_partition`
                    |FROM internal_capture_alias
-                   |ORDER BY
-                   |  year(`ts`), dayofyear(`ts`), hour(`ts`), `eh_partition`
                  """.stripMargin
     log.info("QUERY START")
     log.info(query)

@@ -24,11 +24,7 @@ class ProduceEventDataSetFromQuery(
     log.info("QUERY START")
     log.info(query)
     log.info("QUERY END")
-
-    if(!query.toLowerCase.contains("order by")) {
-      log.error("Query does not contain an ORDER BY")
-      new RuntimeException("Query does not contain an ORDER BY")
-    }
+    
 
     import spark.implicits._
 

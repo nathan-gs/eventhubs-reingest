@@ -38,18 +38,30 @@ object Main extends Logger {
       case _ => ds.cache()
     }
 
-    val toEventHub = new EventDataSetToEventPublisher(publisher)
+    val toEventHub = new EventDataSetToEventPublisher(publisher, spark)
 
     val status = toEventHub.apply(ds)
 
-    spark.stop()
+    //spark.stop()
 
-    if(status.exists(_.isFailure)) {
-      status
-        .filter(_.isFailure)
-        .foreach(t => log.error("Failed to publish events.", t.failed.get))
+
+    if(status.exists(!_.isSuccess)) {
+     status
+        .filter(!_.isSuccess)
+        .foreach(t => log.error(s"Failed to publish events, partition ${t.partition}, exception ${t.exceptionClass.getOrElse("")}, message: ${t.exceptionMessage.getOrElse("")}"))
       System.exit(1)
+    } else {
+      println("--------------- STATS ---------------")
+      status
+        .groupBy(_.partition)
+        .toList
+        .sortBy(_._1)
+        .foreach {case (partition, statsO) =>
+          val stats = statsO.filter(_.stats.isDefined).map(_.stats.get)
+          println(s"Partition $partition # Events: ${stats.map(_.numberOfEvents).sum}, # Batches: ${stats.map(_.numberOfBatches).sum}, Size (Bytes): ${stats.map(_.sizeInBytes).sum}")
+      }
     }
+
   }
 
 
