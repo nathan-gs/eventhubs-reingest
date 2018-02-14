@@ -1,4 +1,4 @@
-package gs.nathan.eventhubsreingest.eh
+package gs.nathan.eventhubsreingest.output
 
 import com.microsoft.azure.eventhubs.ConnectionStringBuilder
 import org.apache.spark.SparkConf

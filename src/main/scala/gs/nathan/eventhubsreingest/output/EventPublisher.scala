@@ -1,6 +1,8 @@
-package gs.nathan.eventhubsreingest
+package gs.nathan.eventhubsreingest.output
 
 import java.sql.Timestamp
+
+import gs.nathan.eventhubsreingest.Event
 
 import scala.util.Try
 

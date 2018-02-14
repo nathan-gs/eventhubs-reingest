@@ -1,9 +1,9 @@
-package gs.nathan.eventhubsreingest.eh
+package gs.nathan.eventhubsreingest.output
 
 import java.time.Duration
 
 import com.microsoft.azure.eventhubs._
-import gs.nathan.eventhubsreingest.{Event, EventPublisher, Logger, PublishResultStats}
+import gs.nathan.eventhubsreingest.{Event, Logger}
 
 import scala.collection.JavaConverters._
 import scala.util.Try

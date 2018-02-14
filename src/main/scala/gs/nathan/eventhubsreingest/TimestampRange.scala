@@ -5,13 +5,15 @@ import java.time.temporal.TemporalAmount
 
 object TimestampRange {
 
-  def apply(start: Timestamp, end: Timestamp, step: TemporalAmount): Seq[(Timestamp, Timestamp)] = {
+  def apply(pair: TimestampPair, step: TemporalAmount): Seq[TimestampPair] = {
     Iterator
-      .iterate(start.toInstant)(_.plus(step))
-      .takeWhile(!_.isAfter(end.toInstant.plus(step)))
+      .iterate(pair.start.toInstant)(_.plus(step))
+      .takeWhile(!_.isAfter(pair.end.toInstant.plus(step)))
       .sliding(2)
-      .map(t => (new Timestamp(t.head.toEpochMilli), new Timestamp(t.tail.head.toEpochMilli)))
+      .map(t => TimestampPair(new Timestamp(t.head.toEpochMilli), new Timestamp(t.tail.head.toEpochMilli)))
       .toSeq
   }
 
 }
+
+case class TimestampPair(start: Timestamp, end: Timestamp)

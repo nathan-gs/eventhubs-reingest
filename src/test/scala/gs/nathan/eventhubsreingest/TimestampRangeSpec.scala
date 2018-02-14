@@ -12,15 +12,18 @@ class TimestampRangeSpec extends WordSpec {
     "asked for a range of times" should {
       val startTs = 1000
       val endTs = 5000
-      val range = TimestampRange(new Timestamp(startTs), new Timestamp(endTs), Duration.ofSeconds(1))
+      val range = TimestampRange(TimestampPair(new Timestamp(startTs), new Timestamp(endTs)), Duration.ofSeconds(1))
 
       "return tuples of Timestamp" in {
 
 
-        range.head shouldBe (new Timestamp(startTs), new Timestamp(startTs + 1000))
-        range.last shouldBe (new Timestamp(endTs), new Timestamp(endTs + 1000))
+        range.head shouldBe TimestampPair(new Timestamp(startTs), new Timestamp(startTs + 1000))
+        range.last shouldBe TimestampPair(new Timestamp(endTs), new Timestamp(endTs + 1000))
         range.size shouldBe 5
-        range shouldBe Seq((1000, 2000), (2000,3000), (3000,4000), (4000,5000), (5000,6000)).map(v => (new Timestamp(v._1), new Timestamp(v._2)))
+
+        range shouldBe Seq((1000, 2000), (2000,3000), (3000,4000), (4000,5000), (5000,6000))
+          .map(v => TimestampPair(new Timestamp(v._1), new Timestamp(v._2)))
+
       }
 
       "be iteratable more than once" in {

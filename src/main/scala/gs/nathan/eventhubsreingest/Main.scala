@@ -1,8 +1,9 @@
 package gs.nathan.eventhubsreingest
 
-import gs.nathan.eventhubsreingest.eh.{EventHubPublisher, EventHubPublisherConfig}
-import gs.nathan.eventhubsreingest.input.{ProduceEventDataSetFromCapture, ProduceEventDataSetFromQuery, InputConfigBuilder}
+import gs.nathan.eventhubsreingest.output.{EventHubPublisher, EventHubPublisherConfig}
+import gs.nathan.eventhubsreingest.input.{InputConfigBuilder, ProduceEventDataSetFromCapture, ProduceEventDataSetFromQuery}
 import gs.nathan.eventhubsreingest.sql.udfs.{RandomPartition, ToTimestamp, UdfRegister}
+import gs.nathan.eventhubsreingest.transform.{EventDataSetToEventPublisher, EventDataSetToEventPublisherConfig}
 import org.apache.spark.sql.SparkSession
 
 object Main extends Logger {
@@ -38,11 +39,12 @@ object Main extends Logger {
       case _ => ds.cache()
     }
 
-    val toEventHub = new EventDataSetToEventPublisher(publisher, spark)
+
+    val eventDataSetToEventPublisherConfig = EventDataSetToEventPublisherConfig(sparkConf, s"$ConfigPrefix.transform")
+
+    val toEventHub = new EventDataSetToEventPublisher(publisher, spark, eventDataSetToEventPublisherConfig)
 
     val status = toEventHub.apply(ds)
-
-    //spark.stop()
 
 
     if(status.exists(!_.isSuccess)) {
